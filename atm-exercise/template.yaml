@@ -1,0 +1,642 @@
+Resources:
+  CustomersBalance08F132DF:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: client_id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: client_id
+          KeyType: HASH
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/CustomersBalance/Resource
+  ProcessRequestsQueueA6A47F41:
+    Type: AWS::SQS::Queue
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ProcessRequestsQueue/Resource
+  OperationResultSNSE82D9FD4:
+    Type: AWS::SNS::Topic
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/OperationResultSNS/Resource
+  ReadBalanceLambdaServiceRole04D6CFAC:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ReadBalanceLambda/ServiceRole/Resource
+  ReadBalanceLambdaServiceRoleDefaultPolicyA84CD6D3:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:Query
+              - dynamodb:Scan
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - CustomersBalance08F132DF
+                  - Arn
+              - Ref: AWS::NoValue
+        Version: "2012-10-17"
+      PolicyName: ReadBalanceLambdaServiceRoleDefaultPolicyA84CD6D3
+      Roles:
+        - Ref: ReadBalanceLambdaServiceRole04D6CFAC
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ReadBalanceLambda/ServiceRole/DefaultPolicy/Resource
+  ReadBalanceLambda56A10A15:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: cdk-hnb659fds-assets-905075344790-eu-west-1
+        S3Key: d3e6ce040bfd4fa6902b57c1b6476f5cdbfbbede38a887ba4d908555b447df13.zip
+      Environment:
+        Variables:
+          CUSTOMERS_BALANCE_TABLE:
+            Ref: CustomersBalance08F132DF
+      Handler: read_balance.handler
+      Role:
+        Fn::GetAtt:
+          - ReadBalanceLambdaServiceRole04D6CFAC
+          - Arn
+      Runtime: python3.11
+    DependsOn:
+      - ReadBalanceLambdaServiceRoleDefaultPolicyA84CD6D3
+      - ReadBalanceLambdaServiceRole04D6CFAC
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ReadBalanceLambda/Resource
+      aws:asset:path: asset.d3e6ce040bfd4fa6902b57c1b6476f5cdbfbbede38a887ba4d908555b447df13
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  DepositLambdaServiceRole25427315:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/DepositLambda/ServiceRole/Resource
+  DepositLambdaServiceRoleDefaultPolicy8F167A19:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+              - sqs:SendMessage
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - ProcessRequestsQueueA6A47F41
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: DepositLambdaServiceRoleDefaultPolicy8F167A19
+      Roles:
+        - Ref: DepositLambdaServiceRole25427315
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/DepositLambda/ServiceRole/DefaultPolicy/Resource
+  DepositLambdaDE532884:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: cdk-hnb659fds-assets-905075344790-eu-west-1
+        S3Key: 02ee443482f69648aa89eb378fbe4d4dccc9b6103b81c43cff04b0249e66384e.zip
+      Environment:
+        Variables:
+          PROCESS_REQUESTS_QUEUE_URL:
+            Ref: ProcessRequestsQueueA6A47F41
+      Handler: deposit.handler
+      Role:
+        Fn::GetAtt:
+          - DepositLambdaServiceRole25427315
+          - Arn
+      Runtime: python3.11
+    DependsOn:
+      - DepositLambdaServiceRoleDefaultPolicy8F167A19
+      - DepositLambdaServiceRole25427315
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/DepositLambda/Resource
+      aws:asset:path: asset.02ee443482f69648aa89eb378fbe4d4dccc9b6103b81c43cff04b0249e66384e
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  WithdrawLambdaServiceRoleA49CEB3F:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/WithdrawLambda/ServiceRole/Resource
+  WithdrawLambdaServiceRoleDefaultPolicy9A6DC6FB:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+              - sqs:SendMessage
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - ProcessRequestsQueueA6A47F41
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: WithdrawLambdaServiceRoleDefaultPolicy9A6DC6FB
+      Roles:
+        - Ref: WithdrawLambdaServiceRoleA49CEB3F
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/WithdrawLambda/ServiceRole/DefaultPolicy/Resource
+  WithdrawLambdaF966DB9D:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: cdk-hnb659fds-assets-905075344790-eu-west-1
+        S3Key: f72b2b21d8163d815a2d434cd376e87ddd615e6da2f0a475eccbed9a0ee80bc8.zip
+      Environment:
+        Variables:
+          PROCESS_REQUESTS_QUEUE_URL:
+            Ref: ProcessRequestsQueueA6A47F41
+      Handler: withdraw.handler
+      Role:
+        Fn::GetAtt:
+          - WithdrawLambdaServiceRoleA49CEB3F
+          - Arn
+      Runtime: python3.11
+    DependsOn:
+      - WithdrawLambdaServiceRoleDefaultPolicy9A6DC6FB
+      - WithdrawLambdaServiceRoleA49CEB3F
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/WithdrawLambda/Resource
+      aws:asset:path: asset.f72b2b21d8163d815a2d434cd376e87ddd615e6da2f0a475eccbed9a0ee80bc8
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  ProcessRequestsLambdaServiceRole083CE89E:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ProcessRequestsLambda/ServiceRole/Resource
+  ProcessRequestsLambdaServiceRoleDefaultPolicy9379C92A:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - sqs:ChangeMessageVisibility
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+              - sqs:ReceiveMessage
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - ProcessRequestsQueueA6A47F41
+                - Arn
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - CustomersBalance08F132DF
+                  - Arn
+              - Ref: AWS::NoValue
+          - Action: sns:Publish
+            Effect: Allow
+            Resource:
+              Ref: OperationResultSNSE82D9FD4
+        Version: "2012-10-17"
+      PolicyName: ProcessRequestsLambdaServiceRoleDefaultPolicy9379C92A
+      Roles:
+        - Ref: ProcessRequestsLambdaServiceRole083CE89E
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ProcessRequestsLambda/ServiceRole/DefaultPolicy/Resource
+  ProcessRequestsLambda3070CC2D:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: cdk-hnb659fds-assets-905075344790-eu-west-1
+        S3Key: 0203312a796bac9150fa494134b99d2e6c7b530cad6d91d24f59b768025f1d55.zip
+      Environment:
+        Variables:
+          CUSTOMERS_BALANCE_TABLE:
+            Ref: CustomersBalance08F132DF
+          OPERATION_RESULT_TOPIC:
+            Ref: OperationResultSNSE82D9FD4
+      Handler: process_requests.handler
+      Role:
+        Fn::GetAtt:
+          - ProcessRequestsLambdaServiceRole083CE89E
+          - Arn
+      Runtime: python3.11
+    DependsOn:
+      - ProcessRequestsLambdaServiceRoleDefaultPolicy9379C92A
+      - ProcessRequestsLambdaServiceRole083CE89E
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ProcessRequestsLambda/Resource
+      aws:asset:path: asset.0203312a796bac9150fa494134b99d2e6c7b530cad6d91d24f59b768025f1d55
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  ProcessRequestsLambdaSqsEventSourceATMLambdaExerciseStackProcessRequestsQueueFD60DBBE45EBC54F:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn:
+        Fn::GetAtt:
+          - ProcessRequestsQueueA6A47F41
+          - Arn
+      FunctionName:
+        Ref: ProcessRequestsLambda3070CC2D
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ProcessRequestsLambda/SqsEventSource:ATMLambdaExerciseStackProcessRequestsQueueFD60DBBE/Resource
+  ExecuteRequestStateMachineRole29654FB9:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+        Version: "2012-10-17"
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ExecuteRequestStateMachine/Role/Resource
+  ExecuteRequestStateMachineRoleDefaultPolicyE8C8E601:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - ProcessRequestsLambda3070CC2D
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - ProcessRequestsLambda3070CC2D
+                        - Arn
+                    - :*
+        Version: "2012-10-17"
+      PolicyName: ExecuteRequestStateMachineRoleDefaultPolicyE8C8E601
+      Roles:
+        - Ref: ExecuteRequestStateMachineRole29654FB9
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ExecuteRequestStateMachine/Role/DefaultPolicy/Resource
+  ExecuteRequestStateMachine94EC5A32:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      DefinitionString:
+        Fn::Join:
+          - ""
+          - - '{"StartAt":"Process Request","States":{"Process Request":{"End":true,"Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","OutputPath":"$.Payload","Resource":"arn:'
+            - Ref: AWS::Partition
+            - :states:::lambda:invoke","Parameters":{"FunctionName":"
+            - Fn::GetAtt:
+                - ProcessRequestsLambda3070CC2D
+                - Arn
+            - '","Payload.$":"$"}}},"TimeoutSeconds":300}'
+      RoleArn:
+        Fn::GetAtt:
+          - ExecuteRequestStateMachineRole29654FB9
+          - Arn
+    DependsOn:
+      - ExecuteRequestStateMachineRoleDefaultPolicyE8C8E601
+      - ExecuteRequestStateMachineRole29654FB9
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ExecuteRequestStateMachine/Resource
+  ATMExerciseAPI5C94DC3D:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ATMExerciseAPI
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Resource
+  ATMExerciseAPIDeployment3F7BAEAFddc3cd3ac66acf4846b5f08075528627:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      Description: Automatically created by the RestApi construct
+      RestApiId:
+        Ref: ATMExerciseAPI5C94DC3D
+    DependsOn:
+      - ATMExerciseAPIdepositPOST95C23CBF
+      - ATMExerciseAPIdeposit4A578D3F
+      - ATMExerciseAPIreadGETE2EBA317
+      - ATMExerciseAPIread0307617A
+      - ATMExerciseAPIwithdrawPOST1A428F94
+      - ATMExerciseAPIwithdraw47455D43
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Deployment/Resource
+  ATMExerciseAPIDeploymentStageprodF898BF9E:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId:
+        Ref: ATMExerciseAPIDeployment3F7BAEAFddc3cd3ac66acf4846b5f08075528627
+      RestApiId:
+        Ref: ATMExerciseAPI5C94DC3D
+      StageName: prod
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/DeploymentStage.prod/Resource
+  ATMExerciseAPIread0307617A:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Fn::GetAtt:
+          - ATMExerciseAPI5C94DC3D
+          - RootResourceId
+      PathPart: read
+      RestApiId:
+        Ref: ATMExerciseAPI5C94DC3D
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/read/Resource
+  ATMExerciseAPIreadGETApiPermissionATMLambdaExerciseStackATMExerciseAPIE371B1C3GETread62E84BE2:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - ReadBalanceLambda56A10A15
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:aws:execute-api:eu-west-1:905075344790:"
+            - Ref: ATMExerciseAPI5C94DC3D
+            - /
+            - Ref: ATMExerciseAPIDeploymentStageprodF898BF9E
+            - /GET/read
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/read/GET/ApiPermission.ATMLambdaExerciseStackATMExerciseAPIE371B1C3.GET..read
+  ATMExerciseAPIreadGETApiPermissionTestATMLambdaExerciseStackATMExerciseAPIE371B1C3GETread6CFB050F:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - ReadBalanceLambda56A10A15
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:aws:execute-api:eu-west-1:905075344790:"
+            - Ref: ATMExerciseAPI5C94DC3D
+            - /test-invoke-stage/GET/read
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/read/GET/ApiPermission.Test.ATMLambdaExerciseStackATMExerciseAPIE371B1C3.GET..read
+  ATMExerciseAPIreadGETE2EBA317:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Join:
+            - ""
+            - - arn:aws:apigateway:eu-west-1:lambda:path/2015-03-31/functions/
+              - Fn::GetAtt:
+                  - ReadBalanceLambda56A10A15
+                  - Arn
+              - /invocations
+      ResourceId:
+        Ref: ATMExerciseAPIread0307617A
+      RestApiId:
+        Ref: ATMExerciseAPI5C94DC3D
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/read/GET/Resource
+  ATMExerciseAPIdeposit4A578D3F:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Fn::GetAtt:
+          - ATMExerciseAPI5C94DC3D
+          - RootResourceId
+      PathPart: deposit
+      RestApiId:
+        Ref: ATMExerciseAPI5C94DC3D
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/deposit/Resource
+  ATMExerciseAPIdepositPOSTApiPermissionATMLambdaExerciseStackATMExerciseAPIE371B1C3POSTdeposit5902A7C9:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - DepositLambdaDE532884
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:aws:execute-api:eu-west-1:905075344790:"
+            - Ref: ATMExerciseAPI5C94DC3D
+            - /
+            - Ref: ATMExerciseAPIDeploymentStageprodF898BF9E
+            - /POST/deposit
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/deposit/POST/ApiPermission.ATMLambdaExerciseStackATMExerciseAPIE371B1C3.POST..deposit
+  ATMExerciseAPIdepositPOSTApiPermissionTestATMLambdaExerciseStackATMExerciseAPIE371B1C3POSTdepositC2480308:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - DepositLambdaDE532884
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:aws:execute-api:eu-west-1:905075344790:"
+            - Ref: ATMExerciseAPI5C94DC3D
+            - /test-invoke-stage/POST/deposit
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/deposit/POST/ApiPermission.Test.ATMLambdaExerciseStackATMExerciseAPIE371B1C3.POST..deposit
+  ATMExerciseAPIdepositPOST95C23CBF:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Join:
+            - ""
+            - - arn:aws:apigateway:eu-west-1:lambda:path/2015-03-31/functions/
+              - Fn::GetAtt:
+                  - DepositLambdaDE532884
+                  - Arn
+              - /invocations
+      ResourceId:
+        Ref: ATMExerciseAPIdeposit4A578D3F
+      RestApiId:
+        Ref: ATMExerciseAPI5C94DC3D
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/deposit/POST/Resource
+  ATMExerciseAPIwithdraw47455D43:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Fn::GetAtt:
+          - ATMExerciseAPI5C94DC3D
+          - RootResourceId
+      PathPart: withdraw
+      RestApiId:
+        Ref: ATMExerciseAPI5C94DC3D
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/withdraw/Resource
+  ATMExerciseAPIwithdrawPOSTApiPermissionATMLambdaExerciseStackATMExerciseAPIE371B1C3POSTwithdraw9ADC7B8F:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - WithdrawLambdaF966DB9D
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:aws:execute-api:eu-west-1:905075344790:"
+            - Ref: ATMExerciseAPI5C94DC3D
+            - /
+            - Ref: ATMExerciseAPIDeploymentStageprodF898BF9E
+            - /POST/withdraw
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/withdraw/POST/ApiPermission.ATMLambdaExerciseStackATMExerciseAPIE371B1C3.POST..withdraw
+  ATMExerciseAPIwithdrawPOSTApiPermissionTestATMLambdaExerciseStackATMExerciseAPIE371B1C3POSTwithdraw137DF425:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - WithdrawLambdaF966DB9D
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:aws:execute-api:eu-west-1:905075344790:"
+            - Ref: ATMExerciseAPI5C94DC3D
+            - /test-invoke-stage/POST/withdraw
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/withdraw/POST/ApiPermission.Test.ATMLambdaExerciseStackATMExerciseAPIE371B1C3.POST..withdraw
+  ATMExerciseAPIwithdrawPOST1A428F94:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Join:
+            - ""
+            - - arn:aws:apigateway:eu-west-1:lambda:path/2015-03-31/functions/
+              - Fn::GetAtt:
+                  - WithdrawLambdaF966DB9D
+                  - Arn
+              - /invocations
+      ResourceId:
+        Ref: ATMExerciseAPIwithdraw47455D43
+      RestApiId:
+        Ref: ATMExerciseAPI5C94DC3D
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/ATMExerciseAPI/Default/withdraw/POST/Resource
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Analytics: v2:deflate64:H4sIAAAAAAAA/21QXW/CMAz8LbyHbIxJe4Z9SJOGxoB3FNJQsrZJhh1QVeW/z3HLhqY9+e58ds65k5OHqbwdqTOMdVGNa7uT3RqVrgRJ265onWp8QeJG7WojHveOQRLwBbL7iCayyIBER+LGB6vZmUEStWp2hZLdS3QarXe59YOfT8bh2sejNgsVgnVlbv+vLs2xsQA0loRVjexWvo/Edelrq1v2MaI0060CMAhylgtxOY+6MjhXYASgCfshBmxRQQXyjaO+upOv/hj4V5DS6IN1/Og1T0IFWxI/q5ZiGcBZsJxsgE8m1L5t6KqsXjHaUl7WESA/X80JL2RY1OOFwYMvstSjlH59fGZeNHzYe8QQ8Xo8iWVLU+5mKicTeT/6BGvHx+jQNkau+voNiAyiVBQCAAA=
+    Metadata:
+      aws:cdk:path: ATMLambdaExerciseStack/CDKMetadata/Default
+Outputs:
+  ATMExerciseAPIEndpoint93E6EEB2:
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Ref: ATMExerciseAPI5C94DC3D
+          - .execute-api.eu-west-1.
+          - Ref: AWS::URLSuffix
+          - /
+          - Ref: ATMExerciseAPIDeploymentStageprodF898BF9E
+          - /
+Parameters:
+  BootstrapVersion:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cdk-bootstrap/hnb659fds/version
+    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store.
