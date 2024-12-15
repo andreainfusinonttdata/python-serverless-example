@@ -3,9 +3,8 @@ from aws_cdk import (
     aws_sqs as sqs,
     aws_sns as sns,
     aws_apigateway as apigateway,
-    aws_stepfunctions as sfn,
-    aws_stepfunctions_tasks as tasks,
-    aws_dynamodb as dynamodb, aws_lambda_event_sources
+    aws_dynamodb as dynamodb,
+    aws_lambda_event_sources
 )
 import aws_cdk as core
 from constructs import Construct
@@ -13,21 +12,24 @@ from constructs import Construct
 
 class ATMLambdaExerciseStack(core.Stack):
 
-    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, id: str, environment: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # Creating DynamoDB Table
         customers_balance_table = dynamodb.Table(self, "CustomersBalance",
                                                  partition_key=dynamodb.Attribute(name="client_id",
                                                                                   type=dynamodb.AttributeType.STRING),
-                                                 billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST
+                                                 billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+                                                 table_name=f"customer-balance-{environment}"
                                                  )
 
         # Creating SQS Queue
-        process_requests_queue = sqs.Queue(self, "ProcessRequestsQueue")
+        process_requests_queue = sqs.Queue(self, "ProcessRequestsQueue",
+                                           queue_name=f"process-requests-queue-{environment}")
 
         # Creating SNS Topic
-        operation_result_topic = sns.Topic(self, "OperationResultSNS")
+        operation_result_topic = sns.Topic(self, "OperationResultSNS",
+                                           topic_name=f"operation-result-{environment}")
 
         # Lambda Functions
         read_balance_lambda = _lambda.Function(self, "ReadBalanceLambda",
@@ -36,7 +38,8 @@ class ATMLambdaExerciseStack(core.Stack):
                                                code=_lambda.Code.from_asset("lambda/read_balance"),
                                                environment={
                                                    "CUSTOMERS_BALANCE_TABLE": customers_balance_table.table_name
-                                               }
+                                               },
+                                               function_name=f"read-balance-{environment}"
                                                )
         customers_balance_table.grant_read_data(read_balance_lambda)
 
@@ -46,7 +49,8 @@ class ATMLambdaExerciseStack(core.Stack):
                                           code=_lambda.Code.from_asset("lambda/deposit"),
                                           environment={
                                               "PROCESS_REQUESTS_QUEUE_URL":process_requests_queue.queue_url
-                                          }
+                                          },
+                                          function_name=f"deposit-balance-{environment}"
                                           )
         process_requests_queue.grant_send_messages(deposit_lambda)
 
@@ -56,7 +60,8 @@ class ATMLambdaExerciseStack(core.Stack):
                                            code=_lambda.Code.from_asset("lambda/withdraw"),
                                            environment={
                                               "PROCESS_REQUESTS_QUEUE_URL":process_requests_queue.queue_url
-                                           }
+                                           },
+                                           function_name=f"withdraw-balance-{environment}"
                                            )
         process_requests_queue.grant_send_messages(withdraw_lambda)
 
@@ -67,7 +72,8 @@ class ATMLambdaExerciseStack(core.Stack):
                                                    environment={
                                                        "CUSTOMERS_BALANCE_TABLE": customers_balance_table.table_name,
                                                        "OPERATION_RESULT_TOPIC": operation_result_topic.topic_arn
-                                                   }
+                                                   },
+                                                   function_name=f"process-requests-{environment}"
                                                    )
 
         # Grant permissions
@@ -79,7 +85,7 @@ class ATMLambdaExerciseStack(core.Stack):
         operation_result_topic.grant_publish(process_requests_lambda)
 
         # Create API Gateway
-        api = apigateway.RestApi(self, "ATMExerciseAPI")
+        api = apigateway.RestApi(self, "ATMExerciseAPI", rest_api_name=f"api-wateway-{environment}")
 
         read_integration = apigateway.LambdaIntegration(read_balance_lambda)
         deposit_integration = apigateway.LambdaIntegration(deposit_lambda)
