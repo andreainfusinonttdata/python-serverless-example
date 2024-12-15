@@ -48,7 +48,7 @@ class ATMLambdaExerciseStack(core.Stack):
                                           handler="deposit.handler",
                                           code=_lambda.Code.from_asset("lambda/deposit"),
                                           environment={
-                                              "PROCESS_REQUESTS_QUEUE_URL":process_requests_queue.queue_url
+                                              "PROCESS_REQUESTS_QUEUE_URL": process_requests_queue.queue_url
                                           },
                                           function_name=f"deposit-balance-{environment}"
                                           )
@@ -59,7 +59,7 @@ class ATMLambdaExerciseStack(core.Stack):
                                            handler="withdraw.handler",
                                            code=_lambda.Code.from_asset("lambda/withdraw"),
                                            environment={
-                                              "PROCESS_REQUESTS_QUEUE_URL":process_requests_queue.queue_url
+                                               "PROCESS_REQUESTS_QUEUE_URL": process_requests_queue.queue_url
                                            },
                                            function_name=f"withdraw-balance-{environment}"
                                            )
@@ -73,7 +73,12 @@ class ATMLambdaExerciseStack(core.Stack):
                                                        "CUSTOMERS_BALANCE_TABLE": customers_balance_table.table_name,
                                                        "OPERATION_RESULT_TOPIC": operation_result_topic.topic_arn
                                                    },
-                                                   function_name=f"process-requests-{environment}"
+                                                   function_name=f"process-requests-{environment}",
+                                                   layers=[_lambda.LayerVersion.from_layer_version_arn(
+                                                       self,
+                                                       "AWSLambdaPowertoolsPythonV2",
+                                                       "arn:aws:lambda:eu-west-1:017000801446:layer:AWSLambdaPowertoolsPythonV2:78"
+                                                   )]
                                                    )
 
         # Grant permissions
