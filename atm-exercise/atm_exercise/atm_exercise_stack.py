@@ -22,6 +22,15 @@ class ATMLambdaExerciseStack(core.Stack):
                                                  billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
                                                  table_name=f"customer-balance-{environment}"
                                                  )
+        customers_operations_table = dynamodb.Table(self, "CustomersOperations",
+                                                    partition_key=dynamodb.Attribute(name="client_id",
+                                                                                     type=dynamodb.AttributeType.STRING),
+                                                    sort_key=dynamodb.Attribute(name="operation_date",
+                                                                                type=dynamodb.AttributeType.STRING),
+                                                    time_to_live_attribute="operation_expiration",
+                                                    billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+                                                    table_name=f"customer-balance-{environment}"
+                                                    )
 
         # Creating SQS Queue
         process_requests_queue = sqs.Queue(self, "ProcessRequestsQueue",
@@ -37,7 +46,8 @@ class ATMLambdaExerciseStack(core.Stack):
                                                handler="read_balance.handler",
                                                code=_lambda.Code.from_asset("lambda/read_balance"),
                                                environment={
-                                                   "CUSTOMERS_BALANCE_TABLE": customers_balance_table.table_name
+                                                   "CUSTOMERS_BALANCE_TABLE": customers_balance_table.table_name,
+                                                   "CUSTOMERS_OPERATIONS_TABLE": customers_operations_table.table_name
                                                },
                                                function_name=f"read-balance-{environment}"
                                                )
@@ -71,6 +81,7 @@ class ATMLambdaExerciseStack(core.Stack):
                                                    code=_lambda.Code.from_asset("lambda/process_requests"),
                                                    environment={
                                                        "CUSTOMERS_BALANCE_TABLE": customers_balance_table.table_name,
+                                                       "CUSTOMERS_OPERATIONS_TABLE": customers_operations_table.table_name,
                                                        "OPERATION_RESULT_TOPIC": operation_result_topic.topic_arn
                                                    },
                                                    function_name=f"process-requests-{environment}",
@@ -87,6 +98,10 @@ class ATMLambdaExerciseStack(core.Stack):
         process_requests_lambda.add_event_source(source)
 
         customers_balance_table.grant_read_write_data(process_requests_lambda)
+        customers_operations_table.grant_read_write_data(process_requests_lambda)
+        customers_operations_table.grant_read_write_data(withdraw_lambda)
+        customers_operations_table.grant_read_write_data(deposit_lambda)
+        customers_operations_table.grant_read_write_data(read_balance_lambda)
         operation_result_topic.grant_publish(process_requests_lambda)
 
         # Create API Gateway

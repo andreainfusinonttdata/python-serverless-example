@@ -4,7 +4,8 @@ import os
 import decimal
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(os.environ['CUSTOMERS_BALANCE_TABLE'])
+balance_table = dynamodb.Table(os.environ['CUSTOMERS_BALANCE_TABLE'])
+operations_table = dynamodb.Table(os.environ['CUSTOMERS_OPERATIONS_TABLE'])
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -17,10 +18,12 @@ class DecimalEncoder(json.JSONEncoder):
 def handler(event, context):
     client_id = event["queryStringParameters"]["client_id"]
 
-    response = table.get_item(Key={'client_id': client_id})
+    response = balance_table.get_item(Key={'client_id': client_id})
     balance = response.get('Item', {}).get('balance', 0)
+    operations = operations_table.query(Key={'client_id': client_id})
 
     return {
         'statusCode': 200,
-        'body': json.dumps({'client_id': client_id, 'balance': balance}, cls=DecimalEncoder)
+        'body': json.dumps({'client_id': client_id, 'balance': balance, 'operations': operations.get('Items', [])},
+                           cls=DecimalEncoder)
     }

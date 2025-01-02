@@ -2,6 +2,7 @@ import json
 import boto3
 import os
 import decimal
+from datetime import datetime, timedelta
 from aws_lambda_powertools.utilities.batch import (
     BatchProcessor,
     EventType,
@@ -11,14 +12,13 @@ from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSRecord
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from aws_lambda_powertools import Logger, Tracer
 
-
 logger = Logger()
 tracer = Tracer()
 
-
 dynamodb = boto3.resource('dynamodb')
 sns = boto3.client('sns')
-table = dynamodb.Table(os.environ['CUSTOMERS_BALANCE_TABLE'])
+balance_table = dynamodb.Table(os.environ['CUSTOMERS_BALANCE_TABLE'])
+operations_table = dynamodb.Table(os.environ['CUSTOMERS_OPERATIONS_TABLE'])
 processor = BatchProcessor(event_type=EventType.SQS)
 
 
@@ -45,7 +45,7 @@ def lambda_handler(record: SQSRecord):
 
     response_message = {}
 
-    response = table.get_item(Key={'client_id': client_id})
+    response = balance_table.get_item(Key={'client_id': client_id})
     balance = response.get('Item', {}).get('balance', 0)
 
     if amount < 0:
@@ -54,7 +54,6 @@ def lambda_handler(record: SQSRecord):
             'client_id': client_id,
             'balance': balance
         }
-
     elif operation == "read":
         response_message = {
             'outcome': 'SUCCESS',
@@ -64,7 +63,7 @@ def lambda_handler(record: SQSRecord):
 
     elif operation == "deposit":
         new_balance = balance + amount
-        table.update_item(
+        balance_table.update_item(
             Key={'client_id': client_id},
             UpdateExpression='SET balance = :val1',
             ExpressionAttributeValues={':val1': new_balance}
@@ -80,7 +79,7 @@ def lambda_handler(record: SQSRecord):
         if balance >= amount:
             # Update balance if sufficient funds
             new_balance = balance - amount
-            table.update_item(
+            balance_table.update_item(
                 Key={'client_id': client_id},
                 UpdateExpression='SET balance = :val1',
                 ExpressionAttributeValues={':val1': new_balance}
@@ -97,6 +96,15 @@ def lambda_handler(record: SQSRecord):
                 'client_id': client_id,
                 'balance': balance
             }
+
+    operations_table.put_item(Item={
+        'client_id': client_id,
+        'operation_name': operation,
+        'amount_requested': amount,
+        'operation_outcome': response_message.get('outcome'),
+        'operation_date': datetime.now().__str__(),
+        'operation_expiration': int((datetime.now() + timedelta(days=90)).timestamp())
+    })
 
     logger.info("Publishing operation result", response_message=response_message)
     sns.publish(
