@@ -2,6 +2,7 @@ import json
 import boto3
 import os
 import decimal
+from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource('dynamodb')
 balance_table = dynamodb.Table(os.environ['CUSTOMERS_BALANCE_TABLE'])
@@ -20,7 +21,7 @@ def handler(event, context):
 
     response = balance_table.get_item(Key={'client_id': client_id})
     balance = response.get('Item', {}).get('balance', 0)
-    operations = operations_table.query(Key={'client_id': client_id})
+    operations = operations_table.query(KeyConditionExpression=Key("client_id").eq(client_id))
 
     return {
         'statusCode': 200,
