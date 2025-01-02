@@ -29,7 +29,7 @@ class ATMLambdaExerciseStack(core.Stack):
                                                                                 type=dynamodb.AttributeType.STRING),
                                                     time_to_live_attribute="operation_expiration",
                                                     billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-                                                    table_name=f"customer-balance-{environment}"
+                                                    table_name=f"customer-operations-{environment}"
                                                     )
 
         # Creating SQS Queue
