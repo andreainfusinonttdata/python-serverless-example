@@ -28,7 +28,7 @@ Resources:
           KeyType: HASH
         - AttributeName: operation_date
           KeyType: RANGE
-      TableName: customer-balance-test
+      TableName: customer-operations-test
       TimeToLiveSpecification:
         AttributeName: operation_expiration
         Enabled: true
@@ -677,4 +677,4 @@ Parameters:
   BootstrapVersion:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /cdk-bootstrap/hnb659fds/version
-    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store.
+    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store
